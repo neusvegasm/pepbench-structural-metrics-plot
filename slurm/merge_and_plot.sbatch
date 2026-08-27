@@ -8,7 +8,7 @@
 #SBATCH --error=logs/%x_%j.err
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+ROOT="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 CONFIG=${CONFIG:-${ROOT}/config.yaml}
 PYTHON=${PYTHON:-python}
 cd "${ROOT}"

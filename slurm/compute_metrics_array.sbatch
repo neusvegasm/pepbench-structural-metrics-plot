@@ -8,7 +8,7 @@
 #SBATCH --error=logs/%x_%A_%a.err
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+ROOT="${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
 CONFIG=${CONFIG:-${ROOT}/config.yaml}
 PYTHON=${PYTHON:-python}
 test -n "${SLURM_ARRAY_TASK_ID:-}" || { echo "Submit this script as a Slurm array" >&2; exit 1; }
