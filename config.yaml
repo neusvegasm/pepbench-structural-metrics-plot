@@ -1,0 +1,44 @@
+# Copy this file to config.yaml and replace paths as needed.
+# Relative paths are resolved from the directory containing config.yaml.
+data_root: /gpfs/radev/pi/martinez_maria/shared/project_peptcr/manuscript/mhc_i/result
+output_root: output
+
+targets:
+  7pbc:
+    native_pdb: /gpfs/radev/pi/martinez_maria/shared/project_peptcr/mhc_i/input/7PBC.pdb
+    # Optional. Omit to infer roles from native-chain sequences.
+    # native_chain_roles:
+    #   peptide: C
+    #   hla: A
+    #   b2m: B
+    #   tcr_alpha: D
+    #   tcr_beta: E
+  7pdw:
+    native_pdb: /gpfs/radev/pi/martinez_maria/shared/project_peptcr/mhc_i/input/7PDW.pdb
+
+methods:
+  rf1: 01_rf1
+  rf2: 02_rf2
+  rf3: 03_rf3
+  bindcraft: 04_bindcraft
+  pepglad: 06_pepglad
+  unimomo: 07_unimomo
+
+paths:
+  threaded_glob: 04_rosetta_thread/outputs/*.pdb
+  openmm_glob: 05_openmm_wm/outputs/*_wm.pdb
+  af3_ranked_glob: 07_af3/*_af3_ranked.tsv
+
+af3:
+  design_id_column: name
+  peptide_column: peptide
+  top_n: 10
+  allow_unique_sequence_fallback: true
+
+analysis:
+  peptide_length: 9
+  contact_cutoff_angstrom: 4.5
+  minimum_mapping_coverage: 0.95 # This protects against incomplete or incorrectly assigned chains
+  minimum_mapping_identity: 0.95 # This helps confirm that the generated chain was matched to the correct native HLA, TCRα or TCRβ chain.
+  minimum_receptor_alignment_ca: 30 # Minimum corresponding receptor Cα atoms must be available for the alignment
+  batch_size: 100 # Job organization and performance. 

@@ -1,0 +1,8 @@
+output/
+logs/
+example_data/generated/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
