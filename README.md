@@ -117,7 +117,7 @@ The tracked `config.yaml` currently analyzes:
 - design results under `shared/project_peptcr/manuscript/mhc_i/result`;
 - 9-mer peptides, 4.5 Å heavy-atom contacts, 95% mapping coverage and
   identity, and at least 30 receptor Cα alignment atoms;
-- batches of 100 structures.
+- batches of 500 structures.
 
 Targets and methods are mappings, so more can be added without changing Python
 code. Relative paths are resolved relative to the YAML file. For native
@@ -194,13 +194,15 @@ OUTPUT_ROOT/
 │   ├── receptor_mapping_qc.parquet
 │   └── merge_qc.json
 └── figures/
-    ├── rmsd_vs_contact_jaccard.png
-    ├── rmsd_vs_contact_jaccard.pdf
+    ├── rmsd_vs_contact_jaccard_METHOD.png
+    ├── rmsd_vs_contact_jaccard_METHOD.pdf
     ├── top10_matching_qc.tsv
     └── unmatched_top10_ids.tsv
 ```
 
-The plot uses only QC-passing rows. Color identifies method, marker shape
-identifies target, and stars identify exact `target + method + design_id`
-matches to the AF3 Top10 mapping. The same RMSD scale and the 0–1 Jaccard scale
-are used in all panels.
+One three-panel figure is produced for every method. Its panels show Total, HLA
+and TCR contact Jaccard against peptide backbone RMSD. Marker shape identifies
+target, the method retains its fixed color, and stars identify exact
+`target + method + design_id` matches to the AF3 Top10 mapping. All method
+figures share one global RMSD scale, and every Jaccard axis spans 0–1, allowing
+direct comparisons across methods and contact categories.

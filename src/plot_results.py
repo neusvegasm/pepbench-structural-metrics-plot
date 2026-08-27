@@ -1,4 +1,4 @@
-"""Create the three-panel RMSD-versus-Jaccard figure with AF3 Top10 stars."""
+"""Create one three-panel RMSD-versus-Jaccard figure per design method."""
 from __future__ import annotations
 
 import argparse
@@ -15,6 +15,10 @@ from .configuration import load_config
 DEFAULT_METHOD_COLORS = {
     "rf1": "red", "rf2": "black", "rf3": "green",
     "pepglad": "blue", "bindcraft": "#E6B800", "unimomo": "pink",
+}
+METHOD_LABELS = {
+    "rf1": "RF1", "rf2": "RF2", "rf3": "RF3",
+    "bindcraft": "BindCraft", "pepglad": "PepGLAD", "unimomo": "UniMoMo",
 }
 MARKERS = ["o", "^", "s", "D", "P", "v", "X"]
 
@@ -54,9 +58,12 @@ def prepare_plot_data(config: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd.Data
     return population, qc, unmatched
 
 
-def create_figure(config: dict):
-    population, qc, unmatched = prepare_plot_data(config)
+def _create_method_figure(config: dict, population: pd.DataFrame, method: str,
+                          rmsd_limit: float):
+    """Plot Total/HLA/TCR panels for one method using shared global limits."""
     methods = list(config["methods"])
+    if method not in methods:
+        raise ValueError(f"Unknown method {method!r}; expected one of {methods}")
     targets = list(config["targets"])
     palette = sns.color_palette("tab10", max(len(methods), 1))
     method_colors = {method: DEFAULT_METHOD_COLORS.get(method, palette[index])
@@ -68,54 +75,68 @@ def create_figure(config: dict):
 
     sns.set_theme(style="whitegrid", context="notebook")
     figure, axes = plt.subplots(1, 3, figsize=(18, 5.8), sharex=True, sharey=True)
+    method_population = population.loc[population["method"].eq(method)].copy()
+    if method_population.empty:
+        raise ValueError(f"No QC-passing structures are available for method {method!r}")
     for axis, (title, metric) in zip(axes, panels):
-        for method in methods:
-            for target in targets:
-                group = population.loc[population["method"].eq(method) & population["target"].eq(target)]
-                axis.scatter(group["peptide_bb_rmsd"], group[metric], color=method_colors[method],
-                             marker=target_markers[target], s=18, alpha=0.25,
-                             edgecolors="none", zorder=1)
-        selected = population.loc[population["is_top10_af3"]]
-        for method in methods:
-            group = selected.loc[selected["method"].eq(method)]
+        for target in targets:
+            group = method_population.loc[method_population["target"].eq(target)]
             axis.scatter(group["peptide_bb_rmsd"], group[metric], color=method_colors[method],
-                         marker="*", s=210, alpha=1, edgecolors="black",
-                         linewidths=1, zorder=10)
+                         marker=target_markers[target], s=20, alpha=0.27,
+                         edgecolors="none", zorder=1)
+        selected = method_population.loc[method_population["is_top10_af3"]]
+        axis.scatter(selected["peptide_bb_rmsd"], selected[metric], color=method_colors[method],
+                     marker="*", s=210, alpha=1, edgecolors="black",
+                     linewidths=1, zorder=10)
         axis.set(title=title, xlabel="Peptide backbone RMSD to native (Å)", ylim=(0, 1))
 
-    maximum = float(population["peptide_bb_rmsd"].max())
-    rmsd_limit = max(2.0, float(np.ceil(maximum / 2) * 2))
     for axis in axes:
         axis.set_xlim(0, rmsd_limit)
     axes[0].set_ylabel("Native-contact Jaccard")
-    figure.suptitle("Peptide RMSD versus native-contact recovery\nTop10 AF3-selected designs highlighted with stars",
-                    fontsize=16, y=1.04)
+    method_label = METHOD_LABELS.get(method, method)
+    figure.suptitle(
+        f"{method_label}: peptide RMSD versus native-contact recovery\n"
+        "Top10 AF3-selected designs highlighted with stars",
+        fontsize=16, y=1.04,
+    )
 
-    method_handles = [Line2D([0], [0], marker="o", linestyle="None", markersize=8,
-                             markerfacecolor=method_colors[method], markeredgecolor="black", label=method)
-                      for method in methods]
     target_handles = [Line2D([0], [0], marker=target_markers[target], linestyle="None", markersize=8,
-                             markerfacecolor="0.65", markeredgecolor="black", label=target.upper())
+                             markerfacecolor=method_colors[method], markeredgecolor="black", label=target.upper())
                       for target in targets]
     top10_handle = Line2D([0], [0], marker="*", linestyle="None", markersize=14,
-                          markerfacecolor="0.65", markeredgecolor="black", label="Top10 AF3")
-    figure.legend(handles=[*method_handles, *target_handles, top10_handle], loc="lower center",
-                  bbox_to_anchor=(0.5, -0.08), ncol=min(9, len(method_handles) + len(target_handles) + 1))
+                          markerfacecolor=method_colors[method], markeredgecolor="black", label="Top10 AF3")
+    figure.legend(handles=[*target_handles, top10_handle], loc="lower center",
+                  bbox_to_anchor=(0.5, -0.08), ncol=len(target_handles) + 1)
     figure.tight_layout(rect=[0, 0.04, 1, 1])
-    return figure, qc, unmatched, population
+    return figure
+
+
+def create_method_figures(config: dict):
+    """Return one comparable three-panel figure for every configured method."""
+    population, qc, unmatched = prepare_plot_data(config)
+    maximum = float(population["peptide_bb_rmsd"].max())
+    rmsd_limit = max(2.0, float(np.ceil(maximum / 2) * 2))
+    figures = {
+        method: _create_method_figure(config, population, method, rmsd_limit)
+        for method in config["methods"]
+    }
+    return figures, qc, unmatched, population
 
 
 def save_plot(config: dict) -> None:
-    figure, qc, unmatched, population = create_figure(config)
+    figures, qc, unmatched, population = create_method_figures(config)
     figure_dir = config["output_root"] / "figures"
     figure_dir.mkdir(parents=True, exist_ok=True)
     qc.to_csv(figure_dir / "top10_matching_qc.tsv", sep="\t", index=False)
     unmatched.to_csv(figure_dir / "unmatched_top10_ids.tsv", sep="\t", index=False)
-    figure.savefig(figure_dir / "rmsd_vs_contact_jaccard.png", dpi=300, bbox_inches="tight")
-    figure.savefig(figure_dir / "rmsd_vs_contact_jaccard.pdf", bbox_inches="tight")
+    for method, figure in figures.items():
+        stem = f"rmsd_vs_contact_jaccard_{method}"
+        figure.savefig(figure_dir / f"{stem}.png", dpi=300, bbox_inches="tight")
+        figure.savefig(figure_dir / f"{stem}.pdf", bbox_inches="tight")
+        plt.close(figure)
     print(qc.to_string(index=False))
     print(f"Background designs: {len(population)}; Top10 stars: {int(population.is_top10_af3.sum())}; unmatched: {len(unmatched)}")
-    print(f"Saved figure under {figure_dir}")
+    print(f"Saved {len(figures)} method-specific figures under {figure_dir}")
 
 
 def main() -> None:
@@ -127,4 +148,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
