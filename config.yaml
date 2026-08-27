@@ -41,4 +41,4 @@ analysis:
   minimum_mapping_coverage: 0.95 # This protects against incomplete or incorrectly assigned chains
   minimum_mapping_identity: 0.95 # This helps confirm that the generated chain was matched to the correct native HLA, TCRα or TCRβ chain.
   minimum_receptor_alignment_ca: 30 # Minimum corresponding receptor Cα atoms must be available for the alignment
-  batch_size: 100 # Job organization and performance.
+  batch_size: 500 # Job organization and performance.
