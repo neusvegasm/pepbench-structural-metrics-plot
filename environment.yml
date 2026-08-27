@@ -13,5 +13,3 @@ dependencies:
   - seaborn>=0.13
   - jupyterlab>=4
   - nbformat>=5.9
-  - pytest>=8
-

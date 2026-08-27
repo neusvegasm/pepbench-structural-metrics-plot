@@ -3,7 +3,9 @@
 This is a small standalone workflow for calculating receptor-frame peptide
 backbone RMSD, peptide–HLA/TCR contact Jaccard, and the final three-panel
 RMSD-versus-Jaccard figure. It is intended to be understandable and runnable
-without the rest of PepBench.
+without the rest of PepBench. This shared repository contains the production
+`config.yaml`; both collaborators must have access to the configured GPFS input
+paths.
 
 AF3 coordinates are never used. AF3 ranking tables supply only the identities
 of designs highlighted with stars. Every plotted coordinate comes from the
@@ -105,38 +107,17 @@ conda activate structural-metrics-plot
 
 All commands below are run from the repository root.
 
-## Run the self-contained example
+## Current configuration
 
-The example generator creates artificial coordinates; they have no biological
-interpretation. They deliberately use different generated chain IDs and residue
-numbers to exercise correspondence mapping.
+The tracked `config.yaml` currently analyzes:
 
-```bash
-python example_data/generate_example_data.py
-
-CONFIG=example_data/config.example_data.yaml
-python -m src.manifest --config "$CONFIG"
-python -m src.compute_metrics --config "$CONFIG" --all
-python -m src.merge_results --config "$CONFIG"
-python -m src.plot_results --config "$CONFIG"
-```
-
-The example figure is written to:
-
-```text
-example_data/generated/output/figures/rmsd_vs_contact_jaccard.png
-```
-
-The notebook in `notebooks/example_plot.ipynb` reads the already-computed final
-table and recreates the figure without parsing structures or recomputing metrics.
-
-## Configure production data
-
-Copy and edit the ignored user-specific configuration:
-
-```bash
-cp config.example.yaml config.yaml
-```
+- targets: `7pbc` and `7pdw`;
+- methods: RF1, RF2, RF3, BindCraft, PepGLAD and UniMoMo;
+- native structures under `shared/project_peptcr/mhc_i/input`;
+- design results under `shared/project_peptcr/manuscript/mhc_i/result`;
+- 9-mer peptides, 4.5 Å heavy-atom contacts, 95% mapping coverage and
+  identity, and at least 30 receptor Cα alignment atoms;
+- batches of 100 structures.
 
 Targets and methods are mappings, so more can be added without changing Python
 code. Relative paths are resolved relative to the YAML file. For native
@@ -144,8 +125,25 @@ structures that cannot be inferred from standard sequence characteristics,
 provide `native_chain_roles` explicitly. Generated roles are still inferred by
 sequence and do not inherit those chain IDs.
 
-Run locally with the same five commands used for the example, replacing
-`CONFIG` with `config.yaml`.
+Because `config.yaml` is shared in this private repository, do not add passwords,
+tokens, or credentials to it.
+
+## Run locally
+
+For a small smoke test or a machine where processing all structures locally is
+appropriate:
+
+```bash
+python -m src.manifest --config config.yaml
+python -m src.compute_metrics --config config.yaml --all
+python -m src.merge_results --config config.yaml
+python -m src.plot_results --config config.yaml
+```
+
+The first command is lightweight: it validates input discovery and AF3/OpenMM
+identity matching and writes the manifest. The second command performs the
+structural calculations and is the expensive step. Slurm is recommended for
+the complete production population.
 
 ## Slurm
 
@@ -172,6 +170,11 @@ sbatch --dependency="afterok:${ARRAY_JOB%%;*}" \
 
 Adjust partition, memory, time and concurrency at submission if needed. No
 Slurm submission is performed automatically by this repository.
+
+After the merge completes, `notebooks/example_plot.ipynb` reads
+`config.yaml` and the existing final metric table. It recreates the figure
+without parsing PDB files or recomputing RMSD or contacts. To use another YAML
+file, set `STRUCTURAL_METRICS_CONFIG` before starting Jupyter.
 
 ## Outputs
 
@@ -201,13 +204,3 @@ The plot uses only QC-passing rows. Color identifies method, marker shape
 identifies target, and stars identify exact `target + method + design_id`
 matches to the AF3 Top10 mapping. The same RMSD scale and the 0–1 Jaccard scale
 are used in all panels.
-
-## Tests
-
-```bash
-pytest -q
-```
-
-Focused tests cover hydrogen exclusion, the 4.5 Å boundary, residue-pair
-deduplication, empty-set Jaccard behavior, receptor-frame rigid-transform
-invariance, peptide-ID parsing, and exact/ambiguous AF3 matching.

@@ -1,5 +1,5 @@
-# Copy this file to config.yaml and replace paths as needed.
-# Relative paths are resolved from the directory containing config.yaml.
+# Shared production configuration for the 7PBC/7PDW analysis.
+# Relative paths, including output_root, are resolved from this file's directory.
 data_root: /gpfs/radev/pi/martinez_maria/shared/project_peptcr/manuscript/mhc_i/result
 output_root: output
 
@@ -41,4 +41,4 @@ analysis:
   minimum_mapping_coverage: 0.95 # This protects against incomplete or incorrectly assigned chains
   minimum_mapping_identity: 0.95 # This helps confirm that the generated chain was matched to the correct native HLA, TCRα or TCRβ chain.
   minimum_receptor_alignment_ca: 30 # Minimum corresponding receptor Cα atoms must be available for the alignment
-  batch_size: 100 # Job organization and performance. 
+  batch_size: 100 # Job organization and performance.
